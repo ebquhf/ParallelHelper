@@ -253,6 +253,198 @@ class Test {
     }
 
     [TestMethod]
+    public void ReportsAccessToMethodWithAsyncCounterPartWithDifferentParameterCount() {
+      const string source = @"
+using System.IO;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+class Test {
+  public async Task DoWorkAsync() {
+    var value = GetIt();
+  }
+
+  public int GetIt() {
+    return 1;
+  }
+
+  public Task<int> GetItAsync(int value) {
+    return Task.FromResult(value);
+  }
+}";
+      VerifyDiagnostic(source, new DiagnosticResultLocation(7, 17));
+    }
+
+    [TestMethod]
+    public void ReportsAccessToMethodWithAsyncCounterPartWithSameParameterTypes() {
+      const string source = @"
+using System.IO;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+class Test {
+  public async Task DoWorkAsync() {
+    DoIt(1);
+  }
+
+  public void DoIt(int value) {
+  }
+
+  public Task DoItAsync(int value) {
+    return Task.CompletedTask;
+  }
+}";
+      VerifyDiagnostic(source, new DiagnosticResultLocation(7, 5));
+    }
+
+    [TestMethod]
+    public void DoesNotReportAccessToAsyncCounterPartWhereOnlyTheFirstParameterTypeIsEqualByDefault() {
+      const string source = @"
+using System.IO;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+class Test {
+  public async Task DoWorkAsync() {
+    DoIt(1, 2, 3);
+  }
+
+  public void DoIt(int value, int value2, int value3) {
+  }
+
+  public Task DoItAsync(int value, string value2, string value3) {
+    return Task.CompletedTask;
+  }
+}";
+      VerifyDiagnostic(source, new DiagnosticResultLocation(7, 5));
+    }
+
+    [TestMethod]
+    public void ReportsAccessToMethodWithAsyncCounterPartWithDifferentParameterCountAndTypesIfParameterTypeMatchCountIsZero() {
+      const string source = @"
+using System.IO;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+class Test {
+  public async Task DoWorkAsync() {
+    DoIt(1);
+  }
+
+  public void DoIt(int value) {
+  }
+
+  public Task DoItAsync(string value, string second) {
+    return Task.CompletedTask;
+  }
+}";
+      CreateAnalyzerCompilationBuilder()
+        .AddSourceTexts(source)
+        .AddAnalyzerOption("dotnet_diagnostic.PH_S019.parameterTypeMatchCount", "0")
+        .VerifyDiagnostic(new DiagnosticResultLocation(7, 5));
+    }
+
+    [TestMethod]
+    public void ReportsAccessToMethodWithAsyncCounterPartIfCounterPartHasOneMoreParameterButMatchCountIsOne() {
+      const string source = @"
+using System.IO;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+class Test {
+  public async Task DoWorkAsync() {
+    DoIt(1);
+  }
+
+  public void DoIt(int value) {
+  }
+
+  public Task DoItAsync(int value, string second) {
+    return Task.CompletedTask;
+  }
+}";
+      CreateAnalyzerCompilationBuilder()
+        .AddSourceTexts(source)
+        .AddAnalyzerOption("dotnet_diagnostic.PH_S019.parameterTypeMatchCount", "1")
+        .VerifyDiagnostic(new DiagnosticResultLocation(7, 5));
+    }
+
+    [TestMethod]
+    public void ReportsAccessToMethodWithAsyncCounterPartIfCounterPartHasOneLessParameterButMatchCountIsOne() {
+      const string source = @"
+using System.IO;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+class Test {
+  public async Task DoWorkAsync() {
+    DoIt(1, new object());
+  }
+
+  public void DoIt(int value, object second) {
+  }
+
+  public Task DoItAsync(int value) {
+    return Task.CompletedTask;
+  }
+}";
+      CreateAnalyzerCompilationBuilder()
+        .AddSourceTexts(source)
+        .AddAnalyzerOption("dotnet_diagnostic.PH_S019.parameterTypeMatchCount", "1")
+        .VerifyDiagnostic(new DiagnosticResultLocation(7, 5));
+    }
+
+    [TestMethod]
+    public void ReportsAccessToMethodWithAsyncCounterPartWithDifferentParameterCountAndTypesIfParameterTypeMatchCountIsIgnore() {
+      const string source = @"
+using System.IO;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+class Test {
+  public async Task DoWorkAsync() {
+    DoIt(1);
+  }
+
+  public void DoIt(int value) {
+  }
+
+  public Task DoItAsync(string value, string second) {
+    return Task.CompletedTask;
+  }
+}";
+      CreateAnalyzerCompilationBuilder()
+        .AddSourceTexts(source)
+        .AddAnalyzerOption("dotnet_diagnostic.PH_S019.parameterTypeMatchCount", "ignore")
+        .VerifyDiagnostic(new DiagnosticResultLocation(7, 5));
+    }
+
+    [TestMethod]
+    public void ReportsAccessToMethodWithAsyncCounterPartIfCounterPartHasMoreParametersThanTheOriginalWithMatchAllParameters() {
+      const string source = @"
+using System.IO;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+class Test {
+  public async Task DoWorkAsync() {
+    DoIt(1);
+  }
+
+  public void DoIt(int value) {
+  }
+
+  public Task DoItAsync(int value, int a, int b, int c) {
+    return Task.CompletedTask;
+  }
+}";
+      CreateAnalyzerCompilationBuilder()
+        .AddSourceTexts(source)
+        .AddAnalyzerOption("dotnet_diagnostic.PH_S019.parameterTypeMatchCount", "10")
+        .VerifyDiagnostic(new DiagnosticResultLocation(7, 5));
+    }
+
+    [TestMethod]
     public void DoesNotReportReadOfTypeWithReadAsyncInNonAsyncMethod() {
       const string source = @"
 using System.IO;
@@ -625,6 +817,103 @@ class Test {
   }
 }";
       VerifyDiagnostic(source);
+    }
+
+    [TestMethod]
+    public void DoesNotReportAccessToAsyncCounterPartWhereTheFirstParameterTypeDiffersByDefault() {
+      const string source = @"
+using System.IO;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+class Test {
+  public async Task DoWorkAsync() {
+    DoIt(1);
+  }
+
+  public void DoIt(int value) {
+  }
+
+  public Task DoItAsync(string value) {
+    return Task.CompletedTask;
+  }
+}";
+      VerifyDiagnostic(source);
+    }
+
+    [TestMethod]
+    public void DoesNotReportAccessToMethodWithAsyncCounterPartWhereTheSingleParameterTypesDifferAndMatchOneParameterIsEnabled() {
+      const string source = @"
+using System.IO;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+class Test {
+  public async Task DoWorkAsync() {
+    DoIt(1);
+  }
+
+  public void DoIt(int value) {
+  }
+
+  public Task DoItAsync(string value) {
+    return Task.CompletedTask;
+  }
+}";
+      CreateAnalyzerCompilationBuilder()
+        .AddSourceTexts(source)
+        .AddAnalyzerOption("dotnet_diagnostic.PH_S019.parameterTypeMatchCount", "1")
+        .VerifyDiagnostic();
+    }
+
+    [TestMethod]
+    public void DoesNotReportAccessToMethodWithAsyncCounterPartWhereTheTwoParameterTypesDifferAndMatchTwoParameterIsEnabled() {
+      const string source = @"
+using System.IO;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+class Test {
+  public async Task DoWorkAsync() {
+    DoIt(1, 2);
+  }
+
+  public void DoIt(int value, int value2) {
+  }
+
+  public Task DoItAsync(int value, string second) {
+    return Task.CompletedTask;
+  }
+}";
+      CreateAnalyzerCompilationBuilder()
+        .AddSourceTexts(source)
+        .AddAnalyzerOption("dotnet_diagnostic.PH_S019.parameterTypeMatchCount", "2")
+        .VerifyDiagnostic();
+    }
+
+    [TestMethod]
+    public void DoesNotReportAccessToMethodWithAsyncCounterPartWhereTheCounterPartDoesNotHaveTheThirdParameterButMatchThreeIsEnabled() {
+      const string source = @"
+using System.IO;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+class Test {
+  public async Task DoWorkAsync() {
+    DoIt(1, 2, 3);
+  }
+
+  public void DoIt(int value, int value2, int value3) {
+  }
+
+  public Task DoItAsync(int value, int value2) {
+    return Task.CompletedTask;
+  }
+}";
+      CreateAnalyzerCompilationBuilder()
+        .AddSourceTexts(source)
+        .AddAnalyzerOption("dotnet_diagnostic.PH_S019.parameterTypeMatchCount", "3")
+        .VerifyDiagnostic();
     }
   }
 }

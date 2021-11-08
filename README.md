@@ -53,9 +53,10 @@ The following issues are *Hidden* by default:
 - [PH_P004](doc/analyzers/PH_P004.md) - CancellationToken not Passed Through (this analysis is covered by [PH_P007](doc/analyzers/PH_P007.md))
 - [PH_P005](doc/analyzers/PH_P005.md) - Blocking Wait on Async Method
 - [PH_P010](doc/analyzers/PH_P010.md) - Async Instead of Continuation
-- [PH_S004](doc/analyzers/PH_S004.md) - Fire-and-forget Threads
+- [PH_S004](doc/analyzers/PH_S004.md) - Fire-and-Forget Threads
 - [PH_S006](doc/analyzers/PH_S006.md) - Unnecessarily Async Methods
 - [PH_S008](doc/analyzers/PH_S008.md) - Timer Scheduled upon Instantiation
+- [PH_S033](doc/analyzers/PH_S033.md) - Fire-and-Forget Tasks
 
 To enable reporting of one or more of the above issues, add an entry like the following one to the *.editorconfig* file (does not work for Visual Studio 2017).
 
@@ -64,7 +65,7 @@ To enable reporting of one or more of the above issues, add an entry like the fo
 dotnet_diagnostic.PH_S004.severity = suggestion
 ```
 
-The same method allows changing the severity of any of the reported issues. The possible severities are *none*, *silent*, *suggestion*, *warning*, and *error*. See the Microsoft documentation about [severity levels](https://docs.microsoft.com/en-us/visualstudio/ide/editorconfig-language-conventions?view=vs-2019#severity-levels) for more details. You may also take a look at the [example .editorconfig](reportall.editorconfig) that sets all analyzers to *warning* and makes them the least conservative.
+The same method allows changing the severity of any of the reported issues. The possible severities are *none*, *silent*, *suggestion*, *warning*, and *error*. See the Microsoft documentation about [severity levels](https://docs.microsoft.com/en-us/dotnet/fundamentals/code-analysis/configuration-options#severity-level) for more details. You may also take a look at the [example .editorconfig](reportall.editorconfig) that sets all analyzers to *warning* and makes them the least conservative.
 
 Alternatively, an entry to the *CodeAnalysis.ruleset* file has the same effect.
 

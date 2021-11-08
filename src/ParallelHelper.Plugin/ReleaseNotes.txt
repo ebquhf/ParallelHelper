@@ -1,15 +1,26 @@
-﻿v3.3.0
+﻿v3.4.0
+
+- Improved Analyzer: PH_S019 - Now matches parameter types (only the first by default)
+- Improved Analyzer: PH_B004 - Now only respects the while-loop's condition
+- Improved Analyzer: PH_B009 - Now ignores readonly fields by default
+
+
+------------------
+
+v3.3.0
 
 - New Analyzer: PH_P013 - Discouraged EntityFramework Method
+- New Analyzer: PH_S033 - Fire-and-Forget Tasks
 - Renamed Analyzer: PH_P003 - Discouraged Thread Method (was Discouraged Method)
 - Renamed Analyzer: PH_P005 - Blocking Wait on Async Method (was Missing Gate-Keeper)
 - Renamed Analyzer: PH_B009 - Incomplete Monitor Synchronization on Multiple Fields (was Missing Monitor Synchronization)
 - Renamed Analyzer: PH_B010 - Incomplete Monitor Synchronization on Single Field (was Missing Monitor Synchronization)
-- Renamed Analyzer: PH_B004 - Single Pulse for Variable Wait Conditions (Monitor.Wait is Enclosed By Parameter-Dependent While-Loop)
+- Renamed Analyzer: PH_B004 - Single Pulse for Variable Wait Conditions (was Monitor.Wait is Enclosed By Parameter-Dependent While-Loop)
 - Improved Analyzer: PH_B014 - Now reports await of as-expressions
 - Improved Analyzer: PH_P005 - Now reports blocking accesses on ValueTasks
 - Improved Analyzer: PH_S026 - Now reports blocking accesses on ValueTasks
 - Improved Analyzer: PH_P007 - Now supports method exclusions (Task.Run by default)
+- Improved Analyzer: PH_S004 - Moved Task related analysis to the new analyzer PH_S033
 
 
 ------------------
@@ -100,6 +111,7 @@ v2.0.0
 
 
 ------------------
+
 v1.8.3
 
 Initial public release.

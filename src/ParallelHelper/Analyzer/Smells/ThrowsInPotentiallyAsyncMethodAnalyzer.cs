@@ -30,8 +30,6 @@ namespace ParallelHelper.Analyzer.Smells {
 
     private const string Category = "Concurrency";
 
-    private const string AsyncSuffix = "Async";
-
     private static readonly LocalizableString Title = "Throws in Potentially Async Method";
     private static readonly LocalizableString MessageFormat = "A method that throws an exception that denotes itself as async behaves differently than an async method. Return Task.FromException(...) instead.";
     private static readonly LocalizableString Description = "";
@@ -42,6 +40,9 @@ namespace ParallelHelper.Analyzer.Smells {
     );
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+
+    private const string AsyncSuffix = "Async";
+    private const string DefaultExcludedBaseTypes = "System.ArgumentException System.NotImplementedException";
 
     public override void Initialize(AnalysisContext context) {
       context.EnableConcurrentExecution();
@@ -72,6 +73,12 @@ namespace ParallelHelper.Analyzer.Smells {
         }
       }
 
+      private IEnumerable<ITypeSymbol> GetExcludedExceptionBaseTypes() {
+        return Context.Options.GetConfig(Rule, "exclusions", DefaultExcludedBaseTypes)
+          .Split()
+          .SelectMany(SemanticModel.GetTypesByName);
+      }
+
       private bool IsPotentiallyAsyncMethod() {
         return !IsAsyncMethod
           && IsMethodWithAsyncSuffix
@@ -84,9 +91,25 @@ namespace ParallelHelper.Analyzer.Smells {
       }
 
       private IEnumerable<SyntaxNode> GetAllThrowsStatementsAndExpressionsInSameActivationFrame() {
+        var excludedBaseTypes = GetExcludedExceptionBaseTypes().ToArray();
         return Root.DescendantNodesInSameActivationFrame()
           .WithCancellation(CancellationToken)
-          .Where(node => node is ThrowStatementSyntax || node is ThrowExpressionSyntax);
+          .Where(node => IsThrowsWithoutExcludedType(node, excludedBaseTypes));
+      }
+
+      private bool IsThrowsWithoutExcludedType(SyntaxNode node, IEnumerable<ITypeSymbol> excludedBaseTypes) {
+        
+        return node switch {
+          ThrowStatementSyntax statement => !IsAnySubTypeOf(statement.Expression, excludedBaseTypes),
+          ThrowExpressionSyntax expression => !IsAnySubTypeOf(expression.Expression, excludedBaseTypes),
+          _ => false
+        };
+      }
+
+      private bool IsAnySubTypeOf(SyntaxNode node, IEnumerable<ITypeSymbol> types) {
+        var nodeType = SemanticModel.GetTypeInfo(node, CancellationToken).Type;
+        return nodeType != null
+          && types.Any(baseType => baseType.IsBaseTypeOf(nodeType, CancellationToken));
       }
     }
   }

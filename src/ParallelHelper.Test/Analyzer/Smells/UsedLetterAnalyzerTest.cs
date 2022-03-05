@@ -23,5 +23,27 @@ namespace ParallelHelper.Test.Analyzer.Smells {
 
     }
 
+    //Finds inner class as it is a NamedTypeSymbol in the syntax tree
+    [TestMethod]
+    public void NestedClassConatainsLetterA() {
+      const string source = @"
+ public class C {
+public class CA{}
+}";
+      VerifyDiagnostic(source, new DiagnosticResultLocation(2, 14));
+
+    }
+
+    // it passes as A is in a property not a NamedType, 
+    [TestMethod]
+    public void ClassPropConatainsLetterA() {
+      const string source = @"
+ public class C
+    {
+        public int Aproperty { get; set; }
+    }";
+      VerifyDiagnostic(source);
+
+    }
   }
 }

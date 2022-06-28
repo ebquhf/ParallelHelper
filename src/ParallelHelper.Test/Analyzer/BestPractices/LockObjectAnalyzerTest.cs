@@ -23,7 +23,7 @@ namespace ParallelHelper.Test.Analyzer.BestPractices {
                 }
         }
       }";
-      VerifyDiagnostic(source);
+      VerifyDiagnostic(source, new DiagnosticResultLocation(8,17));
     }
     [TestMethod]
     public void ObjectLockedWithPublicAccess() {
@@ -49,11 +49,11 @@ namespace ParallelHelper.Test.Analyzer.BestPractices {
       {
             private readonly object lockObject = new object();
             
-            private int MyNumber;
+            private int myNumber;
             public int MyProperty
                 {
-                    get { return myVar; }
-                    set { myVar = value; }
+                    get { return myNumber; }
+                    set { myNumber = value; }
                 }
             public void DoWork()
             {

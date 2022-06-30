@@ -35,13 +35,11 @@ namespace ParallelHelper.Test.Analyzer.BestPractices {
 
             public void DoWork()
             {
-                lock (lockObject)
-                {
-                    MyNumber+=1;
-                }
+                
+                    MyNumber+=1;   
         }
       }";
-      VerifyDiagnostic(source,new DiagnosticResultLocation(2,15));
+      VerifyDiagnostic(source);
     }
     [TestMethod]
     public void ObjectSetFromOutsideInClass() {
@@ -63,7 +61,7 @@ namespace ParallelHelper.Test.Analyzer.BestPractices {
                 }
         }
       }";
-      VerifyDiagnostic(source,new DiagnosticResultLocation(3,15));
+      VerifyDiagnostic(source,new DiagnosticResultLocation(12,17));
     }
   }
 }

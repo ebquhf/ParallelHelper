@@ -14,8 +14,8 @@ namespace ParallelHelper.Analyzer.BestPractices {
     private const string Category = "Locking";
 
     //Why localizable strings
-    private static readonly LocalizableString Title = "inconsistent locking";
-    private static readonly LocalizableString MessageFormat = "Analyze inconsistent locking";
+    private static readonly LocalizableString Title = "Locking with object";
+    private static readonly LocalizableString MessageFormat = "Analyze if locking is used with an object";
     private static readonly LocalizableString Description = "";
 
     private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
@@ -35,7 +35,7 @@ namespace ParallelHelper.Analyzer.BestPractices {
       var lockStatement = ctx.Node as LockStatementSyntax;
       if(lockStatement != null) {
         var location = lockStatement.GetLocation();
-        var diagnostic = Diagnostic.Create(Rule, location, "lockThingy");
+        var diagnostic = Diagnostic.Create(Rule, location, "Lock object is used");
 
         ctx.ReportDiagnostic(diagnostic);
       }

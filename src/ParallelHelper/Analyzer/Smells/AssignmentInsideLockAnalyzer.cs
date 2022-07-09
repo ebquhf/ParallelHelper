@@ -57,12 +57,14 @@ namespace ParallelHelper.Analyzer.Smells {
 
       if(lockStatement != null) {
         var assignment = lockStatement.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
-        var fields = lockStatement.DescendantNodesAndTokensAndSelf().OfType<IFieldSymbol>();
         var ident = assignment.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
-        var location = lockStatement.GetLocation();
-        var diagnostic = Diagnostic.Create(Rule, location, "Assignment is used");
+        if(publicFields.Any(pf => pf.Name == ident.Identifier.Text)) {
+          var location = lockStatement.GetLocation();
+          var diagnostic = Diagnostic.Create(Rule, location, "Assignment is used");
 
-        ctx.ReportDiagnostic(diagnostic);
+          ctx.ReportDiagnostic(diagnostic);
+        }
+
       }
     }
   }

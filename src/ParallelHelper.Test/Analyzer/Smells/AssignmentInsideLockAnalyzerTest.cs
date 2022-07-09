@@ -16,6 +16,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
             private readonly object lockObject = new object();
             
             private int MyNumber;
+            public string MyText;
 
             public void DoWork()
             {
@@ -25,7 +26,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
                 }
         }
       }";
-      VerifyDiagnostic(source, new DiagnosticResultLocation(8, 17));
+      VerifyDiagnostic(source, new DiagnosticResultLocation(9, 17));
     }
   }
 }

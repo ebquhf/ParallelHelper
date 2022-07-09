@@ -2,11 +2,9 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
 
 namespace ParallelHelper.Analyzer.Smells {
   [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -22,18 +20,45 @@ namespace ParallelHelper.Analyzer.Smells {
      DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Error,
      isEnabledByDefault: true, description: Description, helpLinkUri: ""//gets the .md file from parallell helper github HelpLinkFactory.CreateUri(DiagnosticId)
    );
-//    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+    protected List<IFieldSymbol> publicFields;
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
     public override void Initialize(AnalysisContext context) {
       context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+      publicFields = new List<IFieldSymbol>();
       context.EnableConcurrentExecution();
+      //get public members first
+      context.RegisterSyntaxNodeAction(AnalyzeField, SyntaxKind.FieldDeclaration);
       context.RegisterSyntaxNodeAction(AnalyzeLockStatement, SyntaxKind.LockStatement);
+    }
+
+    private void AnalyzeField(SyntaxNodeAnalysisContext context) {
+      var declarationSyntax = context.Node as FieldDeclarationSyntax;
+
+
+      if(declarationSyntax != null) {
+        foreach(var variableDeclaration in declarationSyntax.Declaration.Variables) {
+          if(context.SemanticModel.GetDeclaredSymbol(variableDeclaration) is IFieldSymbol variableDeclarationSymbol 
+            && IsFieldPublic(variableDeclarationSymbol)) {
+            var asd = variableDeclarationSymbol as IFieldSymbol;
+            publicFields.Add(asd);
+          }
+        }
+      }
+    }
+
+    private bool IsFieldPublic(IFieldSymbol fieldSymbol) {
+      return fieldSymbol.DeclaredAccessibility == Accessibility.Public;
     }
     private void AnalyzeLockStatement(SyntaxNodeAnalysisContext ctx) {
       var lockStatement = ctx.Node as LockStatementSyntax;
-      if(lockStatement != null && lockStatement.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>().Any()) {
+
+
+      if(lockStatement != null) {
+        var assignment = lockStatement.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
+        var fields = lockStatement.DescendantNodesAndTokensAndSelf().OfType<IFieldSymbol>();
+        var ident = assignment.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
         var location = lockStatement.GetLocation();
         var diagnostic = Diagnostic.Create(Rule, location, "Assignment is used");
 

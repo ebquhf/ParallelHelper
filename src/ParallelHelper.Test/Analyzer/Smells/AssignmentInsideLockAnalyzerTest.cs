@@ -69,5 +69,26 @@ namespace ParallelHelper.Test.Analyzer.Smells {
   }";
       VerifyDiagnostic(source, new DiagnosticResultLocation(11, 7));
     }
+
+    [TestMethod]
+    public void PrivatePropertyLockedInClass() {
+      var source = @"public class Class {
+    
+    private readonly object lockObject = new object();
+
+    private int testProperty;
+    private int MyProperty {
+      get { return testProperty; }
+      set { testProperty = value; }
+    }
+
+    public void DoWork() {
+      lock(lockObject) {
+        MyProperty += 1;
+      }
+    }
+  }";
+      VerifyDiagnostic(source);
+    }
   }
 }

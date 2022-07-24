@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -20,17 +21,32 @@ namespace ParallelHelper.Analyzer.Smells {
      DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Error,
      isEnabledByDefault: true, description: Description, helpLinkUri: ""//gets the .md file from parallell helper github HelpLinkFactory.CreateUri(DiagnosticId)
    );
-    protected List<IFieldSymbol> publicFields;
+    protected List<string> publicMembers;
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
     public override void Initialize(AnalysisContext context) {
       context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-      publicFields = new List<IFieldSymbol>();
+      publicMembers = new List<string>();
       context.EnableConcurrentExecution();
       //get public members first
       context.RegisterSyntaxNodeAction(AnalyzeField, SyntaxKind.FieldDeclaration);
+      context.RegisterSyntaxNodeAction(AnalyzeProperty, SyntaxKind.PropertyDeclaration);
       context.RegisterSyntaxNodeAction(AnalyzeLockStatement, SyntaxKind.LockStatement);
+    }
+
+    private void AnalyzeProperty(SyntaxNodeAnalysisContext context) {
+      var declarationSyntax = context.Node as PropertyDeclarationSyntax;
+
+
+      if(declarationSyntax != null) {
+       
+        //theres no need to check the accessor list as intellisense check if the operation is legal with the property
+        if(declarationSyntax.Modifiers.Any(SyntaxKind.PublicKeyword)) {
+          publicMembers.Add(declarationSyntax.Identifier.Text);
+        }
+       
+      }
     }
 
     private void AnalyzeField(SyntaxNodeAnalysisContext context) {
@@ -39,10 +55,10 @@ namespace ParallelHelper.Analyzer.Smells {
 
       if(declarationSyntax != null) {
         foreach(var variableDeclaration in declarationSyntax.Declaration.Variables) {
-          if(context.SemanticModel.GetDeclaredSymbol(variableDeclaration) is IFieldSymbol variableDeclarationSymbol 
+          if(context.SemanticModel.GetDeclaredSymbol(variableDeclaration) is IFieldSymbol variableDeclarationSymbol
             && IsFieldPublic(variableDeclarationSymbol)) {
-            var asd = variableDeclarationSymbol as IFieldSymbol;
-            publicFields.Add(asd);
+            var fieldSymbol = variableDeclarationSymbol as IFieldSymbol;
+            publicMembers.Add(fieldSymbol.Name);
           }
         }
       }
@@ -58,7 +74,7 @@ namespace ParallelHelper.Analyzer.Smells {
       if(lockStatement != null) {
         var assignment = lockStatement.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
         var ident = assignment.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
-        if(publicFields.Any(pf => pf.Name == ident.Identifier.Text)) {
+        if(publicMembers.Any(pf => pf == ident.Identifier.Text)) {
           var location = lockStatement.GetLocation();
           var diagnostic = Diagnostic.Create(Rule, location, "Assignment is used");
 
@@ -69,3 +85,4 @@ namespace ParallelHelper.Analyzer.Smells {
     }
   }
 }
+

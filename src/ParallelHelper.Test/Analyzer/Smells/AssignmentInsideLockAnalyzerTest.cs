@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 namespace ParallelHelper.Test.Analyzer.Smells {
   [TestClass]
   public class AssignmentInsideLockAnalyzerTest : AnalyzerTestBase<AssignmentInsideLockAnalyzer> {
+
     [TestMethod]
     public void PrivateFieldLockedInClass() {
       var source = @"public class Class
@@ -46,6 +47,27 @@ namespace ParallelHelper.Test.Analyzer.Smells {
         }
       }";
       VerifyDiagnostic(source, new DiagnosticResultLocation(9, 17));
+    }
+
+    [TestMethod]
+    public void PublicPropertyLockedInClass() {
+      var source = @"public class Class {
+    
+    private readonly object lockObject = new object();
+
+    private int testProperty;
+    public int MyProperty {
+      get { return testProperty; }
+      set { testProperty = value; }
+    }
+
+    public void DoWork() {
+      lock(lockObject) {
+        MyProperty += 1;
+      }
+    }
+  }";
+      VerifyDiagnostic(source, new DiagnosticResultLocation(11, 7));
     }
   }
 }

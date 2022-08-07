@@ -1,4 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using System;
 using System.Collections.Generic;
@@ -23,7 +25,20 @@ namespace ParallelHelper.Test.Analyzer.Smells {
    );
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
     public override void Initialize(AnalysisContext context) {
+      context.RegisterSyntaxNodeAction(AnalyzeLockStatement, SyntaxKind.LockStatement);
+    }
+
+    private void AnalyzeLockStatement(SyntaxNodeAnalysisContext context) {
+      var model = context.SemanticModel;
+      var lockstatement = context.Node as LockStatementSyntax;
+      if(model != null && lockstatement!=null) {
+
+        ControlFlowAnalysis result = model.AnalyzeControlFlow(lockstatement);
+
+        Console.WriteLine(result.Succeeded);
+      }
       
+
     }
   }
 }

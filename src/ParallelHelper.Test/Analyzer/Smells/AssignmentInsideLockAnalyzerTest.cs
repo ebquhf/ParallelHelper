@@ -1,10 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ParallelHelper.Analyzer.Smells;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ParallelHelper.Test.Analyzer.Smells {
   [TestClass]
@@ -27,10 +22,14 @@ namespace ParallelHelper.Test.Analyzer.Smells {
                 }
         }
       }";
+      //no location provided as there is no detactable error
       VerifyDiagnostic(source);
     }
     [TestMethod]
     public void PublicFieldLockedInClass() {
+      //this is the location of the assignment inside the lock
+      int line = 9;
+      int column = 17;
       var source = @"public class Class
       {
             private readonly object lockObject = new object();
@@ -46,11 +45,16 @@ namespace ParallelHelper.Test.Analyzer.Smells {
                 }
         }
       }";
-      VerifyDiagnostic(source, new DiagnosticResultLocation(9, 17));
+
+      VerifyDiagnostic(source, new DiagnosticResultLocation(line, column));
     }
 
     [TestMethod]
     public void PublicPropertyLockedInClass() {
+      //this is the location of the assignment in the lock
+      int line = 11;
+      int column = 7;
+
       var source = @"public class Class {
     
     private readonly object lockObject = new object();
@@ -67,7 +71,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
       }
     }
   }";
-      VerifyDiagnostic(source, new DiagnosticResultLocation(11, 7));
+      VerifyDiagnostic(source, new DiagnosticResultLocation(line, column));
     }
 
     [TestMethod]
@@ -88,6 +92,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
       }
     }
   }";
+      //no location provided as there is no detactable error
       VerifyDiagnostic(source);
     }
   }

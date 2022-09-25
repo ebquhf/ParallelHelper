@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis.Diagnostics;
+using System.Collections.Generic;
 
 namespace ParallelHelper.Test.Analyzer {
   /// <summary>
@@ -24,6 +25,19 @@ namespace ParallelHelper.Test.Analyzer {
       CreateAnalyzerCompilationBuilder()
         .AddSourceTexts(source)
         .VerifyDiagnostic(expectedDiagnostics);
+    }
+
+    public virtual void VerifyDiagnostic(string source) {
+      string[] lines = source.Split("\r\n");
+      List<DiagnosticResultLocation> diagnostics = new List<DiagnosticResultLocation>();
+      for(int i = 0; i < lines.Length; i++) {
+        if(lines[i].Contains("//ERR")) {
+          diagnostics.Add(new DiagnosticResultLocation(i, lines[i].IndexOf(lines[i].Trim()) + 1));
+          break;
+        }
+      }
+
+      VerifyDiagnostic(source, diagnostics.ToArray());
     }
   }
 }

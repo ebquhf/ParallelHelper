@@ -23,7 +23,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
                 }
         }
       }";
-      VerifyDiagnostic2(source);
+      VerifyDiagnostic(source);
     }
 
     [TestMethod]
@@ -48,7 +48,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
                 MyNumber+=1; //ERR: non-synchronized access from a public method
             }
       }";
-      VerifyDiagnostic2(source);
+      VerifyDiagnostic(source);
     }
 
     [TestMethod]
@@ -73,7 +73,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
                 MyNumber+=1;
             }
       }";
-      VerifyDiagnostic2(source);
+      VerifyDiagnostic(source);
     }
 
     [TestMethod]
@@ -96,7 +96,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
                 }
             }
       }";
-      VerifyDiagnostic2(source);
+      VerifyDiagnostic(source);
     }
 
     [TestMethod]
@@ -119,7 +119,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
                 hack[0] = 42; //ERR: data flow - we are modifying MyNumbers object outside of the lock!
             }
       }";
-      VerifyDiagnostic2(source);
+      VerifyDiagnostic(source);
     }
 
     [TestMethod]
@@ -142,8 +142,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
                 }
         }
       }";
-      VerifyDiagnostic(source, new DiagnosticResultLocation(9, 17));
-      VerifyDiagnostic2(source);
+      VerifyDiagnostic(source);
     }
 
     [TestMethod]
@@ -165,8 +164,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
       }
     }
   }";
-      VerifyDiagnostic(source, new DiagnosticResultLocation(11, 7));
-      VerifyDiagnostic2(source);
+      VerifyDiagnostic(source);
     }
 
     [TestMethod]
@@ -187,7 +185,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
       }
     }
   }";
-      VerifyDiagnostic2(source);
+      VerifyDiagnostic(source);
     }
 
     [TestMethod]
@@ -210,23 +208,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
   }";
       //no location provided as there is no detactable error
       VerifyDiagnostic(source);
-      VerifyDiagnostic2(source);
     }
 
-    private void VerifyDiagnostic2(string source)
-    {
-      string[] lines = source.Split("\r\n");
-      List<DiagnosticResultLocation> diagnostics = new List<DiagnosticResultLocation>();
-      for(int i = 0; i < lines.Length; i++)
-      {
-        if(lines[i].Contains("//ERR"))
-        {
-          diagnostics.Add(new DiagnosticResultLocation(i, lines[i].IndexOf(lines[i].Trim()) + 1));
-          break;
-        }
-      }
-
-      VerifyDiagnostic(source, diagnostics.ToArray());
-    }
   }
 }

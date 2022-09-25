@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ParallelHelper.Test.Analyzer.Smells {
+namespace ParallelHelper.Analyzer.Smells {
   [DiagnosticAnalyzer(LanguageNames.CSharp)]
   public class MethodCallInsideLockAnalyzer : DiagnosticAnalyzer {
     public const string DiagnosticId = "PH_BT004";

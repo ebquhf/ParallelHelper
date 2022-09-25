@@ -27,56 +27,6 @@ namespace ParallelHelper.Test.Analyzer.Smells {
     }
 
     [TestMethod]
-    public void PrivateFieldPartiallyLockedInClass() {
-      var source = @"public class Class
-      {
-            private readonly object lockObject = new object();
-            
-            private int MyNumber;
-            public string MyText;
-
-            public void DoWork()
-            {
-                lock (lockObject)
-                {
-                    MyNumber+=1;
-                }
-            }
-
-            public void DoDirtyWork()
-            {
-                MyNumber+=1; //ERR: non-synchronized access from a public method
-            }
-      }";
-      VerifyDiagnostic(source);
-    }
-
-    [TestMethod]
-    public void PublicFieldMethodCallChain() {
-      var source = @"public class Class
-      {
-            private readonly object lockObject = new object();
-            
-            public int MyNumber;
-            public string MyText;
-
-            public void DoWork()
-            {
-                lock (lockObject)
-                {
-                    this.DoDirtyWork(); //ERR: control flow - non-synchronized access via called method
-                }
-            }
-
-            private void DoDirtyWork()
-            {
-                MyNumber+=1;
-            }
-      }";
-      VerifyDiagnostic(source);
-    }
-
-    [TestMethod]
     public void PrivateFieldLockedInsufficiently() {
       var source = @"public class Class
       {
@@ -100,33 +50,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
     }
 
     [TestMethod]
-    public void LeakyReference() {
-      var source = @"public class Class
-      {
-            private readonly object lockObject = new object();
-            
-            private int[] MyNumbers = new int[1];
-            public string MyText;
-
-            public void IncrementUntilMax2()
-            {
-                int[] hack = null;
-                lock (lockObject)
-                {
-                    hack = MyNumbers;
-                }
-
-                hack[0] = 42; //ERR: data flow - we are modifying MyNumbers object outside of the lock!
-            }
-      }";
-      VerifyDiagnostic(source);
-    }
-
-    [TestMethod]
     public void PublicFieldLockedInClass() {
-      //this is the location of the assignment inside the lock
-      int line = 9;
-      int column = 17;
       var source = @"public class Class
       {
             private readonly object lockObject = new object();

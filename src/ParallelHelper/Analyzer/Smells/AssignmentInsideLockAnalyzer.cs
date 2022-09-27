@@ -2,6 +2,8 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Operations;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -31,7 +33,19 @@ namespace ParallelHelper.Analyzer.Smells {
       //get public members first
       context.RegisterSyntaxNodeAction(AnalyzeField, SyntaxKind.FieldDeclaration);
       context.RegisterSyntaxNodeAction(AnalyzeProperty, SyntaxKind.PropertyDeclaration);
+
+      context.RegisterOperationAction(AnalyzeOperation, OperationKind.Binary);
       context.RegisterSyntaxNodeAction(AnalyzeLockStatement, SyntaxKind.LockStatement);
+    }
+
+    private void AnalyzeOperation(OperationAnalysisContext context) {
+      var operation = context.Operation as IBinaryOperation;
+      if(operation != null) {
+        var left = operation.LeftOperand as IFieldReferenceOperation;
+        if(left != null && !IsFieldPublic(left.Field)) {
+
+        }
+      }
     }
 
     private void AnalyzeProperty(SyntaxNodeAnalysisContext context) {
@@ -39,12 +53,12 @@ namespace ParallelHelper.Analyzer.Smells {
 
 
       if(declarationSyntax != null) {
-       
+
         //theres no need to check the accessor list as intellisense check if the operation is legal with the property
         if(declarationSyntax.Modifiers.Any(SyntaxKind.PublicKeyword)) {
           publicMembers.Add(declarationSyntax.Identifier.Text);
         }
-       
+
       }
     }
 

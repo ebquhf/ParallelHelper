@@ -37,5 +37,18 @@ namespace ParallelHelper.Analyzer.Smells {
 
     }
 
+    private void AnalyzeField(SyntaxNodeAnalysisContext context) {
+      var declarationSyntax = context.Node as FieldDeclarationSyntax;
+      if(declarationSyntax != null) {
+        foreach(var variableDeclaration in declarationSyntax.Declaration.Variables) {
+          //  if(context.SemanticModel.GetDeclaredSymbol(variableDeclaration) is IFieldSymbol variableDeclarationSymbol
+          //    && IsFieldPublic(variableDeclarationSymbol)) {
+          //    var fieldSymbol = variableDeclarationSymbol as IFieldSymbol;
+          //    // publicMembers.Add(fieldSymbol.Name);
+          //  }
+          //}
+        }
+      }
+    }
   }
 }

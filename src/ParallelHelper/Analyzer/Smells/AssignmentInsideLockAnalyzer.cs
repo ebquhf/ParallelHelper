@@ -70,10 +70,12 @@ namespace ParallelHelper.Analyzer.Smells {
       private readonly TaskAnalysis _taskAnalysis;
       protected List<SyntaxToken> publicIdentifiers;
       private SyntaxNodeAnalysisContext _nodeAnalysisContext;
+      Location foundLocation = null;
       public Analyzer(SyntaxNodeAnalysisContext context) : base(new SyntaxNodeAnalysisContextWrapper(context)) {
         _taskAnalysis = new TaskAnalysis(context.SemanticModel, context.CancellationToken);
         publicIdentifiers = new List<SyntaxToken>();
         _nodeAnalysisContext = context;
+        
       }
 
       public override void Analyze() {
@@ -85,34 +87,60 @@ namespace ParallelHelper.Analyzer.Smells {
 
         // write to report: I can do this here as SyntaxNodeAnalysisContext is C# implementation dependent and I know the first variable is what needed.
         var fieldVariables = publicMembers.Where(p => p is FieldDeclarationSyntax).Select(p => ((FieldDeclarationSyntax)p).Declaration.Variables.FirstOrDefault());
+        var properties = publicMembers.Where(p => p is PropertyDeclarationSyntax);
+        var propertyIdentifiers = properties.Select(p => ((PropertyDeclarationSyntax)p).Identifier);
 
-        var propertyIdentifiers = publicMembers.Where(p => p is PropertyDeclarationSyntax).Select(p => ((PropertyDeclarationSyntax)p).Identifier);
+        //gets all the fields behind public properties
+        foreach(var identifierSyntax in properties.SelectMany(pm => pm.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())) {
 
-        publicIdentifiers.AddRange(propertyIdentifiers);
-        publicIdentifiers.AddRange(fieldVariables.Select(s => s.Identifier));
+          var symbolInfo = SemanticModel.GetSymbolInfo(identifierSyntax).Symbol;
 
-        //get the locks
-        var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
-
-        foreach(var lockStatement in locks) {
-          var assignment = lockStatement.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
-          var ident = assignment.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
-          if(publicIdentifiers.Any(pf => IsSyntaxTokenEquals(pf, ident.Identifier))) {
-            var location = lockStatement.GetLocation();
-            var diagnostic = Diagnostic.Create(Rule, location, "Assignment is used");
-
-            Context.ReportDiagnostic(diagnostic);
+          //even if its not public its accesible from a public property, this should raise error
+          if(symbolInfo is IFieldSymbol && symbolInfo.DeclaredAccessibility != Accessibility.Public) {
+            publicIdentifiers.Add(identifierSyntax.Identifier);
           }
         }
 
-      }
-      private bool IsFieldPublic(IFieldSymbol fieldSymbol) {
-        return fieldSymbol.DeclaredAccessibility == Accessibility.Public;
-      }
-      private bool IsSyntaxTokenEquals(SyntaxToken first, SyntaxToken other) {
-        return first.Text == other.Text;
+        foreach(var item in publicMembers) {
+          var sd = item.DescendantNodesAndSelf().OfType<BinaryExpressionSyntax>();
+          foreach(var bitem in sd) {
+            if(bitem != null && bitem.Left.Kind() == SyntaxKind.IdentifierName) {
+              var leftIdentifier = (IdentifierNameSyntax)bitem.Left;
+              //TODO make this into a func I use it elsewhere also
+              var symbolInfo = SemanticModel.GetSymbolInfo(leftIdentifier).Symbol;
+              if(symbolInfo.DeclaredAccessibility == Accessibility.Private) {
+                publicIdentifiers.Add(leftIdentifier.Identifier);
+                foundLocation = bitem.GetLocation();
+              }
+            }
+
+          }
+        }
+          publicIdentifiers.AddRange(propertyIdentifiers);
+          publicIdentifiers.AddRange(fieldVariables.Select(s => s.Identifier));
+
+          //get the locks
+          var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
+
+          foreach(var lockStatement in locks) {
+            var assignment = lockStatement.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
+            var ident = assignment.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
+            if(publicIdentifiers.Any(pf => IsSyntaxTokenEquals(pf, ident.Identifier))) {
+              var location = foundLocation ?? lockStatement.GetLocation();
+              var diagnostic = Diagnostic.Create(Rule, location, "Assignment is used");
+
+              Context.ReportDiagnostic(diagnostic);
+            }
+          }
+
+        }
+        private bool IsFieldPublic(IFieldSymbol fieldSymbol) {
+          return fieldSymbol.DeclaredAccessibility == Accessibility.Public;
+        }
+        private bool IsSyntaxTokenEquals(SyntaxToken first, SyntaxToken other) {
+          return first.Text == other.Text;
+        }
       }
     }
   }
-}
 

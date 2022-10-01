@@ -37,7 +37,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
 
             public void IncrementUntilMax2()
             {
-                if (MyNumber < 2) //ERR: this would suggest that MyNumber should never become >2, but it can if multiple thread execute this simultaneously
+               if (MyNumber < 2) //ERR: this would suggest that MyNumber should never become >2, but it can if multiple thread execute this simultaneously
                 {
                   lock (lockObject)
                   {
@@ -46,7 +46,8 @@ namespace ParallelHelper.Test.Analyzer.Smells {
                 }
             }
       }";
-      VerifyDiagnostic(source);
+      var location = new DiagnosticResultLocation(9, 20);
+      VerifyDiagnostic(source,location);
     }
 
     [TestMethod]
@@ -66,6 +67,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
                 }
         }
       }";
+    
       VerifyDiagnostic(source);
     }
 

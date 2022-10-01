@@ -37,34 +37,6 @@ namespace ParallelHelper.Analyzer.Smells {
       new Analyzer(obj).Analyze();
     }
 
-    //private void AnalyzeOperation(OperationAnalysisContext context) {
-    //  var operation = context.Operation as IBinaryOperation;
-    //  if(operation != null) {
-    //    var left = operation.LeftOperand as IFieldReferenceOperation;
-    //    //If the field is not public yet used in an operation it still can cause error
-    //    //the issue is the same as with pubic members, it shoulld be locked
-    //    if(left != null && !IsFieldPublic(left.Field)) {
-    //      //     publicMembers.Add(left.Field.Name);
-    //    }
-    //  }
-    //}
-
-    //private void AnalyzeLockStatement(SyntaxNodeAnalysisContext ctx) {
-    //  var lockStatement = ctx.Node as LockStatementSyntax;
-
-
-    //  if(lockStatement != null) {
-    //    var assignment = lockStatement.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
-    //    var ident = assignment.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
-    //    if(publicIdentifiers.Any(pf => pf == ident.Identifier)) {
-    //      var location = lockStatement.GetLocation();
-    //      var diagnostic = Diagnostic.Create(Rule, location, "Assignment is used");
-
-    //      ctx.ReportDiagnostic(diagnostic);
-    //    }
-
-    //  }
-    //}
 
     private class Analyzer : InternalAnalyzerBase<SyntaxNode> {
       private readonly TaskAnalysis _taskAnalysis;
@@ -75,14 +47,14 @@ namespace ParallelHelper.Analyzer.Smells {
         _taskAnalysis = new TaskAnalysis(context.SemanticModel, context.CancellationToken);
         publicIdentifiers = new List<SyntaxToken>();
         _nodeAnalysisContext = context;
-        
+
       }
 
       public override void Analyze() {
         var classNode = _nodeAnalysisContext.Node as ClassDeclarationSyntax;
 
         //get the public members
-        //theres no need to check the accessor list as intellisense check if the operation is legal with the property
+        //the accessor list will be checked for the properties
         var publicMembers = classNode.Members.Where(m => m is MemberDeclarationSyntax && m.Modifiers.Any(SyntaxKind.PublicKeyword));
 
         // write to report: I can do this here as SyntaxNodeAnalysisContext is C# implementation dependent and I know the first variable is what needed.
@@ -91,56 +63,72 @@ namespace ParallelHelper.Analyzer.Smells {
         var propertyIdentifiers = properties.Select(p => ((PropertyDeclarationSyntax)p).Identifier);
 
         //gets all the fields behind public properties
-        foreach(var identifierSyntax in properties.SelectMany(pm => pm.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())) {
+        AnalyzeFieldsBehindProperties(propertyIdentifiers, properties);
 
-          var symbolInfo = SemanticModel.GetSymbolInfo(identifierSyntax).Symbol;
+        //Get the insufficiently locked fields
+        AnalyzeFieldsInBinaryOperations(propertyIdentifiers, publicMembers);
 
-          //even if its not public its accesible from a public property, this should raise error
-          if(symbolInfo is IFieldSymbol && symbolInfo.DeclaredAccessibility != Accessibility.Public) {
-            publicIdentifiers.Add(identifierSyntax.Identifier);
+        publicIdentifiers.AddRange(propertyIdentifiers);
+        publicIdentifiers.AddRange(fieldVariables.Select(s => s.Identifier));
+
+        //get the locks
+        var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
+
+        AnalyzeLocks(locks, publicIdentifiers);
+
+      }
+
+      private void AnalyzeLocks(IEnumerable<LockStatementSyntax> locks, List<SyntaxToken> publicIdentifiers) {
+        foreach(var lockStatement in locks) {
+          var assignment = lockStatement.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
+          var ident = assignment.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
+          if(publicIdentifiers.Any(pf => IsSyntaxTokenEquals(pf, ident.Identifier))) {
+            var location = foundLocation ?? lockStatement.GetLocation();
+            var diagnostic = Diagnostic.Create(Rule, location, "Assignment is used");
+
+            Context.ReportDiagnostic(diagnostic);
           }
         }
+      }
 
+      private void AnalyzeFieldsInBinaryOperations(IEnumerable<SyntaxToken> propertyIdentifiers, IEnumerable<MemberDeclarationSyntax> publicMembers) {
         foreach(var item in publicMembers) {
-          var sd = item.DescendantNodesAndSelf().OfType<BinaryExpressionSyntax>();
-          foreach(var bitem in sd) {
-            if(bitem != null && bitem.Left.Kind() == SyntaxKind.IdentifierName) {
-              var leftIdentifier = (IdentifierNameSyntax)bitem.Left;
-              //TODO make this into a func I use it elsewhere also
-              var symbolInfo = SemanticModel.GetSymbolInfo(leftIdentifier).Symbol;
-              if(symbolInfo.DeclaredAccessibility == Accessibility.Private) {
+          var expressionSyntaxes = item.DescendantNodesAndSelf().OfType<BinaryExpressionSyntax>();
+          foreach(var expression in expressionSyntaxes) {
+            if(expression != null && expression.Left.Kind() == SyntaxKind.IdentifierName) {
+              var leftIdentifier = (IdentifierNameSyntax)expression.Left;
+              if(IsNameSyntaxNotPublicField(leftIdentifier)) {
                 publicIdentifiers.Add(leftIdentifier.Identifier);
-                foundLocation = bitem.GetLocation();
+                foundLocation = expression.GetLocation();
               }
             }
 
           }
         }
-          publicIdentifiers.AddRange(propertyIdentifiers);
-          publicIdentifiers.AddRange(fieldVariables.Select(s => s.Identifier));
+      }
 
-          //get the locks
-          var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
+      private void AnalyzeFieldsBehindProperties(IEnumerable<SyntaxToken> propertyIdentifiers, IEnumerable<MemberDeclarationSyntax> properties) {
+        foreach(var identifierSyntax in properties.SelectMany(pm => pm.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())) {
 
-          foreach(var lockStatement in locks) {
-            var assignment = lockStatement.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
-            var ident = assignment.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
-            if(publicIdentifiers.Any(pf => IsSyntaxTokenEquals(pf, ident.Identifier))) {
-              var location = foundLocation ?? lockStatement.GetLocation();
-              var diagnostic = Diagnostic.Create(Rule, location, "Assignment is used");
-
-              Context.ReportDiagnostic(diagnostic);
-            }
+          //even if its not public its accesible from a public property, this should raise error
+          if(IsNameSyntaxNotPublicField(identifierSyntax)) {
+            publicIdentifiers.Add(identifierSyntax.Identifier);
           }
+        }
+      }
 
-        }
-        private bool IsFieldPublic(IFieldSymbol fieldSymbol) {
-          return fieldSymbol.DeclaredAccessibility == Accessibility.Public;
-        }
-        private bool IsSyntaxTokenEquals(SyntaxToken first, SyntaxToken other) {
-          return first.Text == other.Text;
-        }
+      private bool IsNameSyntaxNotPublicField(IdentifierNameSyntax identifierSyntax) {
+        var symbolInfo = SemanticModel.GetSymbolInfo(identifierSyntax).Symbol;
+        return symbolInfo is IFieldSymbol && symbolInfo.DeclaredAccessibility != Accessibility.Public;
+      }
+
+      private bool IsFieldPublic(IFieldSymbol fieldSymbol) {
+        return fieldSymbol.DeclaredAccessibility == Accessibility.Public;
+      }
+      private bool IsSyntaxTokenEquals(SyntaxToken first, SyntaxToken other) {
+        return first.Text == other.Text;
       }
     }
   }
+}
 

@@ -2,8 +2,10 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using ParallelHelper.Util;
 using System;
 using System.Collections.Immutable;
+using System.Linq;
 
 namespace ParallelHelper.Analyzer.Smells {
   [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -21,33 +23,28 @@ namespace ParallelHelper.Analyzer.Smells {
    );
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
     public override void Initialize(AnalysisContext context) {
-      context.RegisterSyntaxNodeAction(AnalyzeLockStatement, SyntaxKind.LockStatement);
+      context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+      context.EnableConcurrentExecution();
+      context.RegisterSyntaxNodeAction(AnalyzeDataflow, SyntaxKind.ClassDeclaration);
     }
 
-    private void AnalyzeLockStatement(SyntaxNodeAnalysisContext context) {
-      var model = context.SemanticModel;
-      var lockstatement = context.Node as LockStatementSyntax;
-      if(model != null && lockstatement != null) {
+    private void AnalyzeDataflow(SyntaxNodeAnalysisContext obj) {
+      new Analyzer(obj).Analyze();
+    }
+    private class Analyzer : InternalAnalyzerBase<SyntaxNode> {
+      private TaskAnalysis _taskAnalysis;
+      private SyntaxNodeAnalysisContext _nodeAnalysisContext;
 
-        DataFlowAnalysis result = model.AnalyzeDataFlow(lockstatement);
+      public Analyzer(SyntaxNodeAnalysisContext context) : base(new SyntaxNodeAnalysisContextWrapper(context)) {
+        _taskAnalysis = new TaskAnalysis(context.SemanticModel, context.CancellationToken);
+        _nodeAnalysisContext = context;
 
-        Console.WriteLine(result.Succeeded);
       }
-
-
-    }
-
-    private void AnalyzeField(SyntaxNodeAnalysisContext context) {
-      var declarationSyntax = context.Node as FieldDeclarationSyntax;
-      if(declarationSyntax != null) {
-        foreach(var variableDeclaration in declarationSyntax.Declaration.Variables) {
-          //  if(context.SemanticModel.GetDeclaredSymbol(variableDeclaration) is IFieldSymbol variableDeclarationSymbol
-          //    && IsFieldPublic(variableDeclarationSymbol)) {
-          //    var fieldSymbol = variableDeclarationSymbol as IFieldSymbol;
-          //    // publicMembers.Add(fieldSymbol.Name);
-          //  }
-          //}
-        }
+      public override void Analyze() {
+        var classNode = _nodeAnalysisContext.Node as ClassDeclarationSyntax;
+        var declarations = classNode.DescendantNodesAndSelf().OfType<VariableDeclarationSyntax>();
+        var assignments = classNode.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>();
+        Console.WriteLine(declaration);
       }
     }
   }

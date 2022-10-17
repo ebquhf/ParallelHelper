@@ -59,7 +59,7 @@ namespace ParallelHelper.Test.Analyzer.Smells {
       {
             private readonly object lockObject = new object();
             
-            public int MyNumber;
+            private int MyNumber;
             public string MyText;
 
             public void DoWork()

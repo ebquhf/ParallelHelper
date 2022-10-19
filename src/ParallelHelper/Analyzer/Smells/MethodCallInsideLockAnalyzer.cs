@@ -37,9 +37,23 @@ namespace ParallelHelper.Analyzer.Smells {
         var lockstatement = classNode.DescendantNodes().OfType<LockStatementSyntax>().FirstOrDefault();
         var publicMembers = classNode.Members.Where(m => m is MethodDeclarationSyntax && m.Modifiers.Any(SyntaxKind.PublicKeyword)
         && m.DescendantNodesAndSelf().All(dn => !(dn is LockStatementSyntax)));
+        var privateMembers = classNode.Members.Where(m => m is MethodDeclarationSyntax && m.Modifiers.Any(SyntaxKind.PrivateKeyword)
+        && m.DescendantNodesAndSelf().Any(dn => !(dn is LockStatementSyntax)));
         foreach(var publicMember in publicMembers) {
           // if the lef in the assginment is a private && not locked then its trouble!!
           var expressions = publicMember.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>();
+          foreach(var exp in expressions) {
+            if(IsNameSyntaxPrivateField(GetLeftAssingment(exp), model)) {
+              var diagnostic = Diagnostic.Create(Rule, exp.GetLocation(), "some clever name");
+
+              context.ReportDiagnostic(diagnostic);
+            }
+
+          }
+        }
+
+        foreach(var privateMember in privateMembers) {
+          var expressions = privateMember.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>();
           foreach(var exp in expressions) {
             if(IsNameSyntaxPrivateField(GetLeftAssingment(exp), model)) {
               var diagnostic = Diagnostic.Create(Rule, exp.GetLocation(), "some clever name");

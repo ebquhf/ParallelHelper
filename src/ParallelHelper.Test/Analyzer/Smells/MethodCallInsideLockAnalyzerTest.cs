@@ -66,13 +66,13 @@ namespace ParallelHelper.Test.Analyzer.Smells {
             {
                 lock (lockObject)
                 {
-                    this.DoDirtyWork(); //ERR: control flow - non-synchronized access via called method
+                    this.DoDirtyWork(); 
                 }
             }
 
             private void DoDirtyWork()
             {
-                MyNumber+=1;
+                MyNumber+=1;//ERR: control flow - non-synchronized access via called method
             }
       }";
       VerifyDiagnostic(source);

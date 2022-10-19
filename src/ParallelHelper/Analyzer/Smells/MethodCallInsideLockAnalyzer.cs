@@ -35,17 +35,18 @@ namespace ParallelHelper.Analyzer.Smells {
       if(model != null && classNode != null) {
 
         var lockstatement = classNode.DescendantNodes().OfType<LockStatementSyntax>().FirstOrDefault();
-        var publicMembers = classNode.Members.Where(m => m is MethodDeclarationSyntax && m.Modifiers.Any(SyntaxKind.PublicKeyword));
+        var publicMembers = classNode.Members.Where(m => m is MethodDeclarationSyntax && m.Modifiers.Any(SyntaxKind.PublicKeyword)
+        && m.DescendantNodesAndSelf().All(dn => !(dn is LockStatementSyntax)));
         foreach(var publicMember in publicMembers) {
           // if the lef in the assginment is a private && not locked then its trouble!!
           var expressions = publicMember.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>();
           foreach(var exp in expressions) {
-            if(IsNameSyntaxPublicField(GetLeftAssingment(exp),model)) {
+            if(IsNameSyntaxPrivateField(GetLeftAssingment(exp), model)) {
               var diagnostic = Diagnostic.Create(Rule, exp.GetLocation(), "some clever name");
 
               context.ReportDiagnostic(diagnostic);
             }
-           
+
           }
         }
 
@@ -57,9 +58,9 @@ namespace ParallelHelper.Analyzer.Smells {
     private IdentifierNameSyntax GetLeftAssingment(AssignmentExpressionSyntax assignmentExpression) {
       return assignmentExpression.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
     }
-    private bool IsNameSyntaxPublicField(IdentifierNameSyntax identifierSyntax, SemanticModel model) {
+    private bool IsNameSyntaxPrivateField(IdentifierNameSyntax identifierSyntax, SemanticModel model) {
       var symbolInfo = model.GetSymbolInfo(identifierSyntax).Symbol;
-      return symbolInfo is IFieldSymbol && symbolInfo.DeclaredAccessibility == Accessibility.Public;
+      return symbolInfo is IFieldSymbol && symbolInfo.DeclaredAccessibility == Accessibility.Private;
     }
   }
 }

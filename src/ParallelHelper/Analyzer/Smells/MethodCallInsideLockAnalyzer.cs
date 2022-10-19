@@ -25,20 +25,41 @@ namespace ParallelHelper.Analyzer.Smells {
    );
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
     public override void Initialize(AnalysisContext context) {
-      context.RegisterSyntaxNodeAction(AnalyzeLockStatement, SyntaxKind.LockStatement);
+      context.RegisterSyntaxNodeAction(AnalyzeLockStatement, SyntaxKind.ClassDeclaration);
     }
 
     private void AnalyzeLockStatement(SyntaxNodeAnalysisContext context) {
+      var classNode = context.Node as ClassDeclarationSyntax;
       var model = context.SemanticModel;
-      var lockstatement = context.Node as LockStatementSyntax;
-      if(model != null && lockstatement!=null) {
 
-        ControlFlowAnalysis result = model.AnalyzeControlFlow(lockstatement);
+      if(model != null && classNode != null) {
 
-        Console.WriteLine(result.Succeeded);
+        var lockstatement = classNode.DescendantNodes().OfType<LockStatementSyntax>().FirstOrDefault();
+        var publicMembers = classNode.Members.Where(m => m is MethodDeclarationSyntax && m.Modifiers.Any(SyntaxKind.PublicKeyword));
+        foreach(var publicMember in publicMembers) {
+          // if the lef in the assginment is a private && not locked then its trouble!!
+          var expressions = publicMember.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>();
+          foreach(var exp in expressions) {
+            if(IsNameSyntaxPublicField(GetLeftAssingment(exp),model)) {
+              var diagnostic = Diagnostic.Create(Rule, exp.GetLocation(), "some clever name");
+
+              context.ReportDiagnostic(diagnostic);
+            }
+           
+          }
+        }
+
       }
-      
 
+
+    }
+
+    private IdentifierNameSyntax GetLeftAssingment(AssignmentExpressionSyntax assignmentExpression) {
+      return assignmentExpression.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
+    }
+    private bool IsNameSyntaxPublicField(IdentifierNameSyntax identifierSyntax, SemanticModel model) {
+      var symbolInfo = model.GetSymbolInfo(identifierSyntax).Symbol;
+      return symbolInfo is IFieldSymbol && symbolInfo.DeclaredAccessibility == Accessibility.Public;
     }
   }
 }

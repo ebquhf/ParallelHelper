@@ -15,8 +15,8 @@ namespace ParallelHelper.Analyzer.Smells {
     public const string DiagnosticId = "PH_BT004";
     private const string Category = "Locking";
 
-    private static readonly LocalizableString Title = "Method call in a lock";
-    private static readonly LocalizableString MessageFormat = "A variable has been assigned inside the lock";
+    private static readonly LocalizableString Title = "Use case 3 - Volatile mutator method";
+    private static readonly LocalizableString MessageFormat = "Mutator method is called in an unsynchronized manner.";
     private static readonly LocalizableString Description = "";
 
     private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
@@ -35,29 +35,17 @@ namespace ParallelHelper.Analyzer.Smells {
       if(model != null && classNode != null) {
 
         var lockstatement = classNode.DescendantNodes().OfType<LockStatementSyntax>().FirstOrDefault();
-        var publicMembers = classNode.Members.Where(m => m is MethodDeclarationSyntax && m.Modifiers.Any(SyntaxKind.PublicKeyword)
-        && m.DescendantNodesAndSelf().All(dn => !(dn is LockStatementSyntax)));
-        var privateMembers = classNode.Members.Where(m => m is MethodDeclarationSyntax && m.Modifiers.Any(SyntaxKind.PrivateKeyword)
-        && m.DescendantNodesAndSelf().Any(dn => !(dn is LockStatementSyntax)));
-        foreach(var publicMember in publicMembers) {
+        //getsevery method with an assignment an without lock
+        IEnumerable<MemberDeclarationSyntax> methodMembers = GetMethods(classNode);
+
+        foreach(var publicMember in methodMembers) {
           // if the lef in the assginment is a private && not locked then its trouble!!
           var expressions = publicMember.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>();
+
           foreach(var exp in expressions) {
+            //public fields would be flagged by AssignmentInsideLockAnalyzer
             if(IsNameSyntaxPrivateField(GetLeftAssingment(exp), model)) {
-              var diagnostic = Diagnostic.Create(Rule, exp.GetLocation(), "some clever name");
-
-              context.ReportDiagnostic(diagnostic);
-            }
-
-          }
-        }
-
-        foreach(var privateMember in privateMembers) {
-          var expressions = privateMember.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>();
-          foreach(var exp in expressions) {
-            if(IsNameSyntaxPrivateField(GetLeftAssingment(exp), model)) {
-              var diagnostic = Diagnostic.Create(Rule, exp.GetLocation(), "some clever name");
-
+              var diagnostic = Diagnostic.Create(Rule, exp.GetLocation(), MessageFormat);
               context.ReportDiagnostic(diagnostic);
             }
 
@@ -67,6 +55,10 @@ namespace ParallelHelper.Analyzer.Smells {
       }
 
 
+    }
+
+    private IEnumerable<MemberDeclarationSyntax> GetMethods(ClassDeclarationSyntax classNode) {
+      return classNode.Members.Where(m => m is MethodDeclarationSyntax && m.DescendantNodesAndSelf().All(dn => !(dn is LockStatementSyntax)));
     }
 
     private IdentifierNameSyntax GetLeftAssingment(AssignmentExpressionSyntax assignmentExpression) {

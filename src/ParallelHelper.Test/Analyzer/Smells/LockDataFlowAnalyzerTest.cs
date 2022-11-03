@@ -45,21 +45,21 @@ public virtual void OnThisEvent (EventArgs args)
     public void LeakyReference() {
       var source = @"public class Class
       {
-            private readonly object lockObject = new object();
-            
-            private int[] MyNumbers = new int[1];
-            public string MyText;
+             private readonly object lockObject = new object();
 
-            public void IncrementUntilMax2()
+        private List<int> MyNumbers = new List<int>() { 1 };
+        public string MyText;
+
+        public void IncrementUntilMax2()
+        {
+            List<int> hack = null;
+            lock (lockObject)
             {
-                int[] hack = null;
-                lock (lockObject)
-                {
-                    hack = MyNumbers;
-                }
-
-                hack[0] = 42; //ERR: data flow - we are modifying MyNumbers object outside of the lock!
+                hack = MyNumbers;
             }
+
+            hack[0] = 42; //ERR: data flow - we are modifying MyNumbers object outside of the lock!
+        }
       }";
       VerifyDiagnostic(source);
     }

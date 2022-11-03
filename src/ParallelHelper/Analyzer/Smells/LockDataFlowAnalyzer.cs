@@ -45,7 +45,7 @@ namespace ParallelHelper.Analyzer.Smells {
         var declarations = classNode.DescendantNodesAndSelf().OfType<VariableDeclarationSyntax>();
         var assignments = classNode.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>();
         var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
-        var asd = SemanticModel.AnalyzeDataFlow(locks.FirstOrDefault());
+        var asd = SemanticModel.GetMethodBodyDiagnostics(assignments.FirstOrDefault().Span);
         Console.WriteLine(declarations);
       }
     }

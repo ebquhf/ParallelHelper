@@ -43,14 +43,17 @@ public virtual void OnThisEvent (EventArgs args)
 
     [TestMethod]
     public void LeakyReference() {
-      var source = @"public class Class
+      var source = @"
+    using System.Collections.Generic;
+  
+    public class Class
       {
              private readonly object lockObject = new object();
 
         private List<int> MyNumbers = new List<int>() { 1 };
         public string MyText;
 
-        public void IncrementUntilMax2()
+        public void LeakyMethod()
         {
             List<int> hack = null;
             lock (lockObject)
@@ -61,7 +64,7 @@ public virtual void OnThisEvent (EventArgs args)
             hack[0] = 42; //ERR: data flow - we are modifying MyNumbers object outside of the lock!
         }
       }";
-      VerifyDiagnostic(source);
+      VerifyDiagnostic(source, new DiagnosticResultLocation(12, 23));
     }
 
   }

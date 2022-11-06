@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using ParallelHelper.Util;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
@@ -41,11 +42,30 @@ namespace ParallelHelper.Analyzer.Smells {
 
       }
       public override void Analyze() {
+        List<ISymbol> candidates = new List<ISymbol>();
+        List<ISymbol> leftOperands = new List<ISymbol>();
         var classNode = _nodeAnalysisContext.Node as ClassDeclarationSyntax;
         var declarations = classNode.DescendantNodesAndSelf().OfType<VariableDeclarationSyntax>();
-        var assignments = classNode.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>();
+        var methods = classNode.DescendantNodesAndSelf().OfType<MemberDeclarationSyntax>();
         var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
-        var asd = SemanticModel.GetMethodBodyDiagnostics(assignments.FirstOrDefault().Span);
+        var assignments = locks.SelectMany(l => l.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>());
+
+        var asd = SemanticModel.GetMethodBodyDiagnostics(methods.FirstOrDefault().Span);
+        foreach(var ass in assignments) {
+          leftOperands.Add(SemanticModel.GetSymbolInfo(ass.Left).Symbol);
+          var basf = SemanticModel.AnalyzeDataFlow(ass);
+          candidates.AddRange(basf.WrittenOutside);
+        }
+        //TODO fix the naming
+        var foundIssues = candidates.Where(c => leftOperands.Contains(c));
+        if(foundIssues.Any()) {
+          foreach(var issue in foundIssues) {
+            var diagnostic = Diagnostic.Create(Rule, issue.Locations.First(), "Assignment is used");
+
+            Context.ReportDiagnostic(diagnostic);
+          }
+
+        }
         Console.WriteLine(declarations);
       }
     }

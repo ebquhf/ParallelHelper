@@ -14,8 +14,8 @@ namespace ParallelHelper.Analyzer.Smells {
     public const string DiagnosticId = "PH_BT005";
     private const string Category = "Locking";
 
-    private static readonly LocalizableString Title = "Dataflow inside lock";
-    private static readonly LocalizableString MessageFormat = "A variable is used in a safe way regarding concurrency inside the lock";
+    private static readonly LocalizableString Title = "Unsafe collection";
+    private static readonly LocalizableString MessageFormat = "Dangerous assignment on a collection reference";
     private static readonly LocalizableString Description = "";
 
     private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
@@ -45,28 +45,39 @@ namespace ParallelHelper.Analyzer.Smells {
         List<ISymbol> candidates = new List<ISymbol>();
         List<ISymbol> leftOperands = new List<ISymbol>();
         var classNode = _nodeAnalysisContext.Node as ClassDeclarationSyntax;
-        var declarations = classNode.DescendantNodesAndSelf().OfType<VariableDeclarationSyntax>();
-        var methods = classNode.DescendantNodesAndSelf().OfType<MemberDeclarationSyntax>();
-        var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
-        var assignments = locks.SelectMany(l => l.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>());
+        if(classNode != null) {
+          //Gets all the lock syntaxes in the class
+          var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
 
-        var asd = SemanticModel.GetMethodBodyDiagnostics(methods.FirstOrDefault().Span);
+          //selects every assignment expression inside the every lock
+          var assignments = locks.SelectMany(l => l.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>());
+
+          //gets if an assigned value is also written outside the lock
+          GetCandidatesForConcurrencyError(assignments, candidates, leftOperands);
+
+
+          //checks if the written outside reference is the same as the assigned in lock
+          var foundIssues = candidates.Where(c => leftOperands.Contains(c));
+          if(foundIssues.Any()) {
+            foreach(var issue in foundIssues) {
+              foreach(var location in issue.Locations) {
+                var diagnostic = Diagnostic.Create(Rule, location, MessageFormat);
+
+                Context.ReportDiagnostic(diagnostic);
+              }
+
+            }
+
+          }
+        }
+      }
+
+      private void GetCandidatesForConcurrencyError(IEnumerable<AssignmentExpressionSyntax> assignments, List<ISymbol> candidates, List<ISymbol> leftOperands) {
         foreach(var ass in assignments) {
           leftOperands.Add(SemanticModel.GetSymbolInfo(ass.Left).Symbol);
-          var basf = SemanticModel.AnalyzeDataFlow(ass);
-          candidates.AddRange(basf.WrittenOutside);
+          var dataFlow = SemanticModel.AnalyzeDataFlow(ass);
+          candidates.AddRange(dataFlow.WrittenOutside);
         }
-        //TODO fix the naming
-        var foundIssues = candidates.Where(c => leftOperands.Contains(c));
-        if(foundIssues.Any()) {
-          foreach(var issue in foundIssues) {
-            var diagnostic = Diagnostic.Create(Rule, issue.Locations.First(), "Assignment is used");
-
-            Context.ReportDiagnostic(diagnostic);
-          }
-
-        }
-        Console.WriteLine(declarations);
       }
     }
   }

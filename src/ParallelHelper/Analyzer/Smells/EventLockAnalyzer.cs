@@ -6,6 +6,7 @@ using ParallelHelper.Util;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 
 namespace ParallelHelper.Analyzer.Smells {
@@ -29,24 +30,23 @@ namespace ParallelHelper.Analyzer.Smells {
     public override void Initialize(AnalysisContext context) {
       context.EnableConcurrentExecution();
       context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-      context.RegisterSyntaxNodeAction(AnalyzeExpressionStatement, SyntaxKind.ConstructorDeclaration);
+      context.RegisterSyntaxNodeAction(AnalyzeExpressionStatement, SyntaxKind.ClassDeclaration);
     }
     private static void AnalyzeExpressionStatement(SyntaxNodeAnalysisContext context) {
       new Analyzer(context).Analyze();
     }
-    private class Analyzer : MonitorAwareAnalyzerWithSyntaxWalkerBase<ConstructorDeclarationSyntax> {
+    private class Analyzer : MonitorAwareAnalyzerWithSyntaxWalkerBase<ClassDeclarationSyntax> {
       public Analyzer(SyntaxNodeAnalysisContext context) : base(new SyntaxNodeAnalysisContextWrapper(context)) {
-        var node = context.Node as SimpleNameSyntax;
-
+        var node = context.Node as ClassDeclarationSyntax;
+        var delegates = node.DescendantNodes().OfType<DelegateDeclarationSyntax>();
+        var events = node.DescendantNodes().OfType<EventFieldDeclarationSyntax>();
         // we're only interested in delegates
-        var type = SemanticModel.GetTypeInfo(node, context.CancellationToken).ConvertedType;
+        var type = SemanticModel.GetTypeInfo(delegates.First(), context.CancellationToken).ConvertedType;
 
-        if(type == null || type.TypeKind != TypeKind.Delegate) {
-          return;
-        }
+
 
         // we're only interested in methods from the current assembly
-        var symbol = context.SemanticModel.GetSymbolInfo(node, context.CancellationToken).Symbol;
+        var symbol = context.SemanticModel.GetSymbolInfo(delegates.First(), context.CancellationToken).Symbol;
 
         if(symbol == null ||
             symbol.Kind != SymbolKind.Method ||

@@ -46,7 +46,7 @@ protected virtual OnMyEvent(MyEventArgs args)
             {
                 MyEvent += OnThisEvent;
                 MyNumber = 1;
-                OnThisEvent(MyNumber);
+                OnThisEvent(MyNumber); //ERR: raising event in a lock is discouraged!
             }
         }
 

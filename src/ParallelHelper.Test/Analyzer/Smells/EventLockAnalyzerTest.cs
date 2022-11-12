@@ -24,7 +24,7 @@ protected virtual OnMyEvent(MyEventArgs args)
 
     }
     [TestMethod]
-    public void PrivateFieldLockedInClass() {
+    public void MethodInvocationLockedInClass() {
       var source = @"
       public class EventClass
     {
@@ -54,5 +54,35 @@ protected virtual OnMyEvent(MyEventArgs args)
     }";
       VerifyDiagnostic(source);
     }
+
+    [TestMethod]
+    public void PrivateFieldLockedInClass() {
+      var source = @"
+      public class EventClass
+    {
+        private readonly object lockObject = new object();
+        public delegate void ThisEvent(int number);
+        private int MyNumber;
+        public string MyText;
+
+        private event ThisEvent MyEvent;
+
+        
+        public void DoWork()
+        {
+
+            lock (lockObject)
+            {
+                MyEvent += OnThisEvent;
+                MyNumber = 1;
+                MyEvent?.Invoke(MyNumber); //ERR: raising event in a lock is discouraged!
+            }
+        }
+
+
+    }";
+      VerifyDiagnostic(source, new DiagnosticResultLocation(18, 25));
+    }
+
   }
 }

@@ -73,7 +73,7 @@ protected virtual OnMyEvent(MyEventArgs args)
 
             lock (lockObject)
             {
-                MyEvent += OnThisEvent;
+                
                 MyNumber = 1;
                 MyEvent?.Invoke(MyNumber); //ERR: raising event in a lock is discouraged!
             }

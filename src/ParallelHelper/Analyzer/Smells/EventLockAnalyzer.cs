@@ -17,7 +17,7 @@ namespace ParallelHelper.Analyzer.Smells {
     private const string Category = "Concurrency";
 
     private static readonly LocalizableString Title = "Raise event in lock";
-    private static readonly LocalizableString MessageFormat = "Rasing an event inside a lock is discouraged.";
+    private static readonly LocalizableString MessageFormat = "Raising an event inside a lock is discouraged.";
     private static readonly LocalizableString Description = "";
 
     private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(

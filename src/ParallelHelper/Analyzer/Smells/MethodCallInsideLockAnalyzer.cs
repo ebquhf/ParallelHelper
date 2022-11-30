@@ -33,8 +33,10 @@ namespace ParallelHelper.Analyzer.Smells {
       var model = context.SemanticModel;
 
       if(model != null && classNode != null) {
+        //continues analysis if there is a lock, it's a sign of multi-threaded usage.
+        if(!classNode.DescendantNodes().OfType<LockStatementSyntax>().Any())
+          return;
 
-        var lockstatement = classNode.DescendantNodes().OfType<LockStatementSyntax>().FirstOrDefault();
         //getsevery method with an assignment an without lock
         IEnumerable<MemberDeclarationSyntax> methodMembers = GetMethods(classNode);
 

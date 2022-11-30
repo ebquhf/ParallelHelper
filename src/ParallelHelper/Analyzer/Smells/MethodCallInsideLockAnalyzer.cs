@@ -20,7 +20,7 @@ namespace ParallelHelper.Analyzer.Smells {
     private static readonly LocalizableString Description = "";
 
     private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
-     DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Error,
+     DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning,
      isEnabledByDefault: true, description: Description, helpLinkUri: ""//gets the .md file from parallell helper github HelpLinkFactory.CreateUri(DiagnosticId)
    );
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);

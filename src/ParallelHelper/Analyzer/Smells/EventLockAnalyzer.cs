@@ -12,7 +12,7 @@ using System.Text;
 namespace ParallelHelper.Analyzer.Smells {
   [DiagnosticAnalyzer(LanguageNames.CSharp)]
   public class EventLockAnalyzer : DiagnosticAnalyzer {
-    public const string DiagnosticId = "BT_007";
+    public const string DiagnosticId = "PH_BT007";
 
     private const string Category = "Concurrency";
 

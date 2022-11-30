@@ -15,11 +15,11 @@ namespace ParallelHelper.Analyzer.Smells {
     private const string Category = "Locking";
 
     private static readonly LocalizableString Title = "Unsafe collection";
-    private static readonly LocalizableString MessageFormat = "Dangerous assignment on a collection reference";
+    private static readonly LocalizableString MessageFormat = "Dangerous assignment of a collection";
     private static readonly LocalizableString Description = "";
 
     private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
-     DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Error,
+     DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning,
      isEnabledByDefault: true, description: Description, helpLinkUri: ""//gets the .md file from parallell helper github HelpLinkFactory.CreateUri(DiagnosticId)
    );
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);

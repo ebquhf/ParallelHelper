@@ -43,6 +43,9 @@ namespace ParallelHelper.Analyzer.Smells {
         //delegates inside the class
         var delegates = node.DescendantNodes().OfType<DelegateDeclarationSyntax>();
 
+        if(delegates == null) {
+          return;
+        }
         //gets the invocation syntaxes from inside locks
         var invocations = GetLockedInvocations(node);
 

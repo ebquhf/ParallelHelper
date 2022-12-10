@@ -73,9 +73,9 @@ namespace ParallelHelper.Analyzer.Smells {
 
         //get the locks
         var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
-
-        AnalyzeLocks(locks, publicIdentifiers);
-
+        if(locks != null) {
+          AnalyzeLocks(locks, publicIdentifiers);
+        }
       }
 
       private void AnalyzeLocks(IEnumerable<LockStatementSyntax> locks, List<SyntaxToken> publicIdentifiers) {

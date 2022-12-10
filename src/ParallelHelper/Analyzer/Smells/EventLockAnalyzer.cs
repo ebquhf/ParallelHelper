@@ -40,6 +40,8 @@ namespace ParallelHelper.Analyzer.Smells {
         var node = context.Node as ClassDeclarationSyntax;
         var candidateDelegates = new Dictionary<InvocationExpressionSyntax, List<DelegateDeclarationSyntax>>();
 
+        if(node == null) { return; }
+
         //delegates inside the class
         var delegates = node.DescendantNodes().OfType<DelegateDeclarationSyntax>();
 
@@ -48,6 +50,9 @@ namespace ParallelHelper.Analyzer.Smells {
         }
         //gets the invocation syntaxes from inside locks
         var invocations = GetLockedInvocations(node);
+        if(invocations == null) {
+          return;
+        }
 
         //gets the reference to each delegate from the invocations
         GetCandidatesFromInvocations(invocations, candidateDelegates);

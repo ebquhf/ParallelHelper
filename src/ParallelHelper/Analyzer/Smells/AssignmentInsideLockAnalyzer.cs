@@ -2,9 +2,7 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis.Operations;
 using ParallelHelper.Util;
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -42,7 +40,7 @@ namespace ParallelHelper.Analyzer.Smells {
       private readonly TaskAnalysis _taskAnalysis;
       protected List<SyntaxToken> publicIdentifiers;
       private SyntaxNodeAnalysisContext _nodeAnalysisContext;
-      Location foundLocation = null;
+      Location? foundLocation = null;
       public Analyzer(SyntaxNodeAnalysisContext context) : base(new SyntaxNodeAnalysisContextWrapper(context)) {
         _taskAnalysis = new TaskAnalysis(context.SemanticModel, context.CancellationToken);
         publicIdentifiers = new List<SyntaxToken>();
@@ -52,7 +50,9 @@ namespace ParallelHelper.Analyzer.Smells {
 
       public override void Analyze() {
         var classNode = _nodeAnalysisContext.Node as ClassDeclarationSyntax;
-
+        if(classNode == null) {
+          return;
+        }
         //get the public members
         //the accessor list will be checked for the properties
         var publicMembers = classNode.Members.Where(m => m is MemberDeclarationSyntax && m.Modifiers.Any(SyntaxKind.PublicKeyword));
@@ -69,7 +69,10 @@ namespace ParallelHelper.Analyzer.Smells {
         AnalyzeFieldsInBinaryOperations(propertyIdentifiers, publicMembers);
 
         publicIdentifiers.AddRange(propertyIdentifiers);
-        publicIdentifiers.AddRange(fieldVariables.Select(s => s.Identifier));
+
+        if(fieldVariables != null) {
+          publicIdentifiers.AddRange(fieldVariables.Select(s => s != null ? s.Identifier : new SyntaxToken()));
+        }
 
         //get the locks
         var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
@@ -118,7 +121,7 @@ namespace ParallelHelper.Analyzer.Smells {
       }
 
       private bool IsNameSyntaxNotPublicField(IdentifierNameSyntax identifierSyntax) {
-        var symbolInfo = SemanticModel.GetSymbolInfo(identifierSyntax).Symbol;
+        var symbolInfo = SemanticModel.GetSymbolInfo(identifierSyntax, CancellationToken).Symbol;
         return symbolInfo is IFieldSymbol && symbolInfo.DeclaredAccessibility != Accessibility.Public;
       }
 

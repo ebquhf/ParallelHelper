@@ -15,6 +15,8 @@ namespace ParallelHelper.Test {
       _options = new TestAnalyzerConfigOptions(options);
     }
 
+    public override AnalyzerConfigOptions GlobalOptions => throw new System.NotImplementedException();
+
     public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) {
       return _options;
     }

@@ -35,9 +35,45 @@ namespace ParallelHelper.Analyzer.Smells {
     private static void AnalyzeExpressionStatement(SyntaxNodeAnalysisContext context) {
       new Analyzer(context).Analyze();
     }
-    private class Analyzer : MonitorAwareAnalyzerWithSyntaxWalkerBase<ClassDeclarationSyntax> {
+    private class Analyzer : InternalAnalyzerBase<SyntaxNode>{
+      private TaskAnalysis _taskAnalysis;
+      private SyntaxNodeAnalysisContext _nodeAnalysisContext;
+
       public Analyzer(SyntaxNodeAnalysisContext context) : base(new SyntaxNodeAnalysisContextWrapper(context)) {
-        var node = context.Node as ClassDeclarationSyntax;
+
+        _taskAnalysis = new TaskAnalysis(context.SemanticModel, context.CancellationToken);
+        _nodeAnalysisContext = context;
+      }
+
+      private void ReportPossibleDiagnostic(IEnumerable<KeyValuePair<InvocationExpressionSyntax, List<DelegateDeclarationSyntax>>> foundIssues) {
+        if(foundIssues.Any()) {
+
+          foreach(var issue in foundIssues) {
+            var diagnostic = Diagnostic.Create(Rule, issue.Key.GetLocation(), MessageFormat);
+            Context.ReportDiagnostic(diagnostic);
+          }
+
+        }
+      }
+
+      private void GetCandidatesFromInvocations(IEnumerable<InvocationExpressionSyntax> invocations, Dictionary<InvocationExpressionSyntax, List<DelegateDeclarationSyntax>> candidateDelegates) {
+        foreach(var invo in invocations) {
+          var methodSymbol = SemanticModel.GetSymbolInfo(invo, CancellationToken).Symbol as IMethodSymbol;
+          var syntaxReference = methodSymbol?.DeclaringSyntaxReferences.FirstOrDefault();
+          if(syntaxReference != null) {
+            candidateDelegates.Add(invo, syntaxReference.SyntaxTree.GetRoot()
+              .DescendantNodesAndSelf().OfType<DelegateDeclarationSyntax>().ToList());
+          }
+        }
+      }
+
+      private IEnumerable<InvocationExpressionSyntax> GetLockedInvocations(ClassDeclarationSyntax node) {
+        return node.DescendantNodesAndSelf().OfType<LockStatementSyntax>()
+          .SelectMany(l => l.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>());
+      }
+
+      public override void Analyze() {
+        var node = _nodeAnalysisContext.Node as ClassDeclarationSyntax;
         var candidateDelegates = new Dictionary<InvocationExpressionSyntax, List<DelegateDeclarationSyntax>>();
 
         if(node == null) { return; }
@@ -64,32 +100,6 @@ namespace ParallelHelper.Analyzer.Smells {
 
         //reports the diagnostic on each raise event call inside the lock
         ReportPossibleDiagnostic(foundIssues);
-
-      }
-
-      private void ReportPossibleDiagnostic(IEnumerable<KeyValuePair<InvocationExpressionSyntax, List<DelegateDeclarationSyntax>>> foundIssues) {
-        if(foundIssues.Any()) {
-
-          foreach(var issue in foundIssues) {
-            var diagnostic = Diagnostic.Create(Rule, issue.Key.GetLocation(), MessageFormat);
-            Context.ReportDiagnostic(diagnostic);
-          }
-
-        }
-      }
-
-      private void GetCandidatesFromInvocations(IEnumerable<InvocationExpressionSyntax> invocations, Dictionary<InvocationExpressionSyntax, List<DelegateDeclarationSyntax>> candidateDelegates) {
-        foreach(var invo in invocations) {
-          var methodSymbol = SemanticModel.GetSymbolInfo(invo).Symbol as IMethodSymbol;
-          var syntaxReference = methodSymbol?.DeclaringSyntaxReferences.FirstOrDefault();
-          candidateDelegates.Add(invo, syntaxReference.SyntaxTree.GetRoot()
-            .DescendantNodesAndSelf().OfType<DelegateDeclarationSyntax>().ToList());
-        }
-      }
-
-      private IEnumerable<InvocationExpressionSyntax> GetLockedInvocations(ClassDeclarationSyntax node) {
-        return node.DescendantNodesAndSelf().OfType<LockStatementSyntax>()
-          .SelectMany(l => l.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>());
       }
     }
   }

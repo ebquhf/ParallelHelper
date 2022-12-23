@@ -43,13 +43,13 @@ namespace ParallelHelper.Analyzer.Smells {
         if(node == null) { return; }
 
         //delegates inside the class
-        var delegates = node.DescendantNodes().OfType<DelegateDeclarationSyntax>();
+        var delegates = node.DescendantNodes().OfType<DelegateDeclarationSyntax>().ToList();
 
         if(delegates == null) {
           return;
         }
         //gets the invocation syntaxes from inside locks
-        var invocations = GetLockedInvocations(node);
+        var invocations = GetLockedInvocations(node).ToList();
         if(invocations == null) {
           return;
         }
@@ -60,7 +60,7 @@ namespace ParallelHelper.Analyzer.Smells {
         //if its a delegate from the same class then its sure the invocation method calls an event
         var foundIssues = candidateDelegates.Where(candidates =>
                               delegates.Any(classDelegate => candidates.Value
-                                         .Any(candidateDelegate => candidateDelegate == classDelegate)));
+                                         .Any(candidateDelegate => candidateDelegate == classDelegate))).ToList();
 
         //reports the diagnostic on each raise event call inside the lock
         ReportPossibleDiagnostic(foundIssues);
@@ -89,7 +89,7 @@ namespace ParallelHelper.Analyzer.Smells {
 
       private IEnumerable<InvocationExpressionSyntax> GetLockedInvocations(ClassDeclarationSyntax node) {
         return node.DescendantNodesAndSelf().OfType<LockStatementSyntax>()
-          .SelectMany(l => l.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>());
+          .SelectMany(l => l.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>()).ToList();
       }
     }
   }

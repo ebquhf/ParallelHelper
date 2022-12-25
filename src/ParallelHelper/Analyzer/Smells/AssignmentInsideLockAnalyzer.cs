@@ -53,14 +53,17 @@ namespace ParallelHelper.Analyzer.Smells {
       public override void Analyze() {
         var classNode = _nodeAnalysisContext.Node as ClassDeclarationSyntax;
 
+        if(classNode == null)
+          return;
+
         //get the public members
         //the accessor list will be checked for the properties
-        var publicMembers = classNode.Members.Where(m => m is MemberDeclarationSyntax && m.Modifiers.Any(SyntaxKind.PublicKeyword));
+        var publicMembers = classNode.Members.Where(m => m is MemberDeclarationSyntax && m.Modifiers.Any(SyntaxKind.PublicKeyword)).ToList();
 
         // write to report: I can do this here as SyntaxNodeAnalysisContext is C# implementation dependent and I know the first variable is what needed.
         var fieldVariables = publicMembers.Where(p => p is FieldDeclarationSyntax).Select(p => ((FieldDeclarationSyntax)p).Declaration.Variables.FirstOrDefault());
         var properties = publicMembers.Where(p => p is PropertyDeclarationSyntax);
-        var propertyIdentifiers = properties.Select(p => ((PropertyDeclarationSyntax)p).Identifier);
+        var propertyIdentifiers = properties.Select(p => ((PropertyDeclarationSyntax)p).Identifier).ToList();
 
         //gets all the fields behind public properties
         AnalyzeFieldsBehindProperties(propertyIdentifiers, properties);
@@ -72,7 +75,7 @@ namespace ParallelHelper.Analyzer.Smells {
         publicIdentifiers.AddRange(fieldVariables.Select(s => s.Identifier));
 
         //get the locks
-        var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
+        var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>().ToList();
         if(locks != null) {
           AnalyzeLocks(locks, publicIdentifiers);
         }

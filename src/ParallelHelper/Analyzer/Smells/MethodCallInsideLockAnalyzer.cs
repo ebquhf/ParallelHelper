@@ -38,11 +38,11 @@ namespace ParallelHelper.Analyzer.Smells {
           return;
 
         //getsevery method with an assignment an without lock
-        IEnumerable<MemberDeclarationSyntax> methodMembers = GetMethods(classNode);
+        IEnumerable<MemberDeclarationSyntax> methodMembers = GetMethods(classNode).ToList();
 
         foreach(var publicMember in methodMembers) {
           // if the lef in the assginment is a private && not locked then its trouble!!
-          var expressions = publicMember.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>();
+          var expressions = publicMember.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>().ToList();
 
           foreach(var exp in expressions) {
             //public fields would be flagged by AssignmentInsideLockAnalyzer

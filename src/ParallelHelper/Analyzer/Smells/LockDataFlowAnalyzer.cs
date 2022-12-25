@@ -47,17 +47,17 @@ namespace ParallelHelper.Analyzer.Smells {
         var classNode = _nodeAnalysisContext.Node as ClassDeclarationSyntax;
         if(classNode != null) {
           //Gets all the lock syntaxes in the class
-          var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
+          var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>().ToList();
 
           //selects every assignment expression inside the every lock
-          var assignments = locks.SelectMany(l => l.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>());
+          var assignments = locks.SelectMany(l => l.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>()).ToList();
 
           //gets if an assigned value is also written outside the lock
           GetCandidatesForConcurrencyError(assignments, candidates, leftOperands);
 
 
           //checks if the written outside reference is the same as the assigned in lock
-          var foundIssues = candidates.Where(c => leftOperands.Contains(c));
+          var foundIssues = candidates.Where(c => leftOperands.Contains(c)).ToList();
           if(foundIssues.Any()) {
             foreach(var issue in foundIssues) {
               foreach(var location in issue.Locations) {

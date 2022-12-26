@@ -84,12 +84,17 @@ namespace ParallelHelper.Analyzer.Smells {
       private void AnalyzeLocks(IEnumerable<LockStatementSyntax> locks, List<SyntaxToken> publicIdentifiers) {
         foreach(var lockStatement in locks) {
           var assignment = lockStatement.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
-          var ident = assignment.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
-          if(publicIdentifiers.Any(pf => IsSyntaxTokenEquals(pf, ident.Identifier))) {
-            var location = foundLocation ?? lockStatement.GetLocation();
-            var diagnostic = Diagnostic.Create(Rule, location, "Assignment is used");
 
-            Context.ReportDiagnostic(diagnostic);
+          if(assignment != null) {
+            var ident = assignment.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
+            if(ident != null) {
+              if(publicIdentifiers.Any(pf => IsSyntaxTokenEquals(pf, ident.Identifier))) {
+                var location = foundLocation ?? lockStatement.GetLocation();
+                var diagnostic = Diagnostic.Create(Rule, location, "Assignment is used");
+
+                Context.ReportDiagnostic(diagnostic);
+              }
+            }
           }
         }
       }

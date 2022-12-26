@@ -81,9 +81,13 @@ namespace ParallelHelper.Analyzer.Smells {
       private void GetCandidatesFromInvocations(IEnumerable<InvocationExpressionSyntax> invocations, Dictionary<InvocationExpressionSyntax, List<DelegateDeclarationSyntax>> candidateDelegates) {
         foreach(var invo in invocations) {
           var methodSymbol = SemanticModel.GetSymbolInfo(invo).Symbol as IMethodSymbol;
-          var syntaxReference = methodSymbol?.DeclaringSyntaxReferences.FirstOrDefault();
-          candidateDelegates.Add(invo, syntaxReference.SyntaxTree.GetRoot()
-            .DescendantNodesAndSelf().OfType<DelegateDeclarationSyntax>().ToList());
+          if(methodSymbol != null) {
+            var syntaxReference = methodSymbol?.DeclaringSyntaxReferences.FirstOrDefault();
+            if(syntaxReference != null && !candidateDelegates.ContainsKey(invo)) {
+              candidateDelegates.Add(invo, syntaxReference.SyntaxTree.GetRoot()
+                .DescendantNodesAndSelf().OfType<DelegateDeclarationSyntax>().ToList());
+            }
+          }
         }
       }
 

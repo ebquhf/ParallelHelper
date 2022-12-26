@@ -20,7 +20,7 @@ namespace ParallelHelper.Analyzer.Smells {
     private static readonly LocalizableString Description = "";
 
     private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
-     DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Error,
+     DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning,
      isEnabledByDefault: true, description: Description, helpLinkUri: ""//gets the .md file from parallell helper github HelpLinkFactory.CreateUri(DiagnosticId)
    );
 
@@ -53,14 +53,17 @@ namespace ParallelHelper.Analyzer.Smells {
       public override void Analyze() {
         var classNode = _nodeAnalysisContext.Node as ClassDeclarationSyntax;
 
+        if(classNode == null)
+          return;
+
         //get the public members
         //the accessor list will be checked for the properties
-        var publicMembers = classNode.Members.Where(m => m is MemberDeclarationSyntax && m.Modifiers.Any(SyntaxKind.PublicKeyword));
+        var publicMembers = classNode.Members.Where(m => m is MemberDeclarationSyntax && m.Modifiers.Any(SyntaxKind.PublicKeyword)).ToList();
 
         // write to report: I can do this here as SyntaxNodeAnalysisContext is C# implementation dependent and I know the first variable is what needed.
         var fieldVariables = publicMembers.Where(p => p is FieldDeclarationSyntax).Select(p => ((FieldDeclarationSyntax)p).Declaration.Variables.FirstOrDefault());
         var properties = publicMembers.Where(p => p is PropertyDeclarationSyntax);
-        var propertyIdentifiers = properties.Select(p => ((PropertyDeclarationSyntax)p).Identifier);
+        var propertyIdentifiers = properties.Select(p => ((PropertyDeclarationSyntax)p).Identifier).ToList();
 
         //gets all the fields behind public properties
         AnalyzeFieldsBehindProperties(propertyIdentifiers, properties);
@@ -72,21 +75,26 @@ namespace ParallelHelper.Analyzer.Smells {
         publicIdentifiers.AddRange(fieldVariables.Select(s => s.Identifier));
 
         //get the locks
-        var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
-
-        AnalyzeLocks(locks, publicIdentifiers);
-
+        var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>().ToList();
+        if(locks != null) {
+          AnalyzeLocks(locks, publicIdentifiers);
+        }
       }
 
       private void AnalyzeLocks(IEnumerable<LockStatementSyntax> locks, List<SyntaxToken> publicIdentifiers) {
         foreach(var lockStatement in locks) {
           var assignment = lockStatement.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
-          var ident = assignment.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
-          if(publicIdentifiers.Any(pf => IsSyntaxTokenEquals(pf, ident.Identifier))) {
-            var location = foundLocation ?? lockStatement.GetLocation();
-            var diagnostic = Diagnostic.Create(Rule, location, "Assignment is used");
 
-            Context.ReportDiagnostic(diagnostic);
+          if(assignment != null) {
+            var ident = assignment.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
+            if(ident != null) {
+              if(publicIdentifiers.Any(pf => IsSyntaxTokenEquals(pf, ident.Identifier))) {
+                var location = foundLocation ?? lockStatement.GetLocation();
+                var diagnostic = Diagnostic.Create(Rule, location, "Assignment is used");
+
+                Context.ReportDiagnostic(diagnostic);
+              }
+            }
           }
         }
       }

@@ -20,7 +20,7 @@ namespace ParallelHelper.Analyzer.Smells {
     private static readonly LocalizableString Description = "";
 
     private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
-     DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Error,
+     DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning,
      isEnabledByDefault: true, description: Description, helpLinkUri: ""//gets the .md file from parallell helper github HelpLinkFactory.CreateUri(DiagnosticId)
    );
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
@@ -33,14 +33,16 @@ namespace ParallelHelper.Analyzer.Smells {
       var model = context.SemanticModel;
 
       if(model != null && classNode != null) {
+        //continues analysis if there is a lock, it's a sign of multi-threaded usage.
+        if(!classNode.DescendantNodes().OfType<LockStatementSyntax>().Any())
+          return;
 
-        var lockstatement = classNode.DescendantNodes().OfType<LockStatementSyntax>().FirstOrDefault();
         //getsevery method with an assignment an without lock
-        IEnumerable<MemberDeclarationSyntax> methodMembers = GetMethods(classNode);
+        IEnumerable<MemberDeclarationSyntax> methodMembers = GetMethods(classNode).ToList();
 
         foreach(var publicMember in methodMembers) {
           // if the lef in the assginment is a private && not locked then its trouble!!
-          var expressions = publicMember.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>();
+          var expressions = publicMember.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>().ToList();
 
           foreach(var exp in expressions) {
             //public fields would be flagged by AssignmentInsideLockAnalyzer

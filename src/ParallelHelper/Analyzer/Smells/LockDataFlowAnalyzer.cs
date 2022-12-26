@@ -15,11 +15,11 @@ namespace ParallelHelper.Analyzer.Smells {
     private const string Category = "Locking";
 
     private static readonly LocalizableString Title = "Unsafe collection";
-    private static readonly LocalizableString MessageFormat = "Dangerous assignment on a collection reference";
+    private static readonly LocalizableString MessageFormat = "Dangerous assignment of a collection";
     private static readonly LocalizableString Description = "";
 
     private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
-     DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Error,
+     DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning,
      isEnabledByDefault: true, description: Description, helpLinkUri: ""//gets the .md file from parallell helper github HelpLinkFactory.CreateUri(DiagnosticId)
    );
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
@@ -47,17 +47,17 @@ namespace ParallelHelper.Analyzer.Smells {
         var classNode = _nodeAnalysisContext.Node as ClassDeclarationSyntax;
         if(classNode != null) {
           //Gets all the lock syntaxes in the class
-          var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>();
+          var locks = classNode.DescendantNodes().OfType<LockStatementSyntax>().ToList();
 
           //selects every assignment expression inside the every lock
-          var assignments = locks.SelectMany(l => l.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>());
+          var assignments = locks.SelectMany(l => l.DescendantNodesAndSelf().OfType<AssignmentExpressionSyntax>()).ToList();
 
           //gets if an assigned value is also written outside the lock
           GetCandidatesForConcurrencyError(assignments, candidates, leftOperands);
 
 
           //checks if the written outside reference is the same as the assigned in lock
-          var foundIssues = candidates.Where(c => leftOperands.Contains(c));
+          var foundIssues = candidates.Where(c => leftOperands.Contains(c)).ToList();
           if(foundIssues.Any()) {
             foreach(var issue in foundIssues) {
               foreach(var location in issue.Locations) {
